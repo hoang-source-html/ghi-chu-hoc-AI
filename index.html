@@ -34,6 +34,7 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
+<a class="skip-link" href="#report-main">Bỏ qua điều hướng</a>
 <div class="layout">
 <aside>
 <div class="brand"><img class="mark" src="icon-diamond.png" alt="" width="38" height="38"><div><strong>KCR PMH</strong><small>Phân tích tồn kho</small></div></div>
@@ -41,7 +42,7 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <a href="#overview">Tổng quan</a><a href="#pa1">PA1 · Hiện tại</a><a href="#pa2">PA2 · Giải pháp mới</a><a href="#quality">Kiểm tra dữ liệu</a>
 </nav>
 </aside>
-<main>
+<main id="report-main" tabindex="-1">
 <header class="top">
 <strong id="page-name">Tổng quan</strong>
 <div class="segments" role="group" aria-label="Loại PO"><span>Loại PO</span><button type="button" data-po="">Tất cả</button><button type="button" data-po="Nhập khẩu">Nhập khẩu</button><button type="button" data-po="Khác">Khác</button></div>
@@ -61,8 +62,14 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <section id="plan" class="panel" hidden>
 <div class="plan-toolbar">
 <div><h2 id="plan-title"></h2><p id="plan-caption" class="hint"></p></div>
-<label>Giá cơ sở<select id="price-basis"></select></label>
-<label>Disc % Avr<input id="discount" type="text" inputmode="text" value="-5%" spellcheck="false" aria-describedby="discount-error"></label>
+<div class="discount-control">
+<label for="discount">Disc % Avr</label>
+<div class="discount-stepper">
+<button type="button" id="discount-down" aria-label="Giảm Disc % Avr 1 điểm phần trăm">−</button>
+<input id="discount" type="text" inputmode="text" value="-5%" spellcheck="false" aria-describedby="discount-error">
+<button type="button" id="discount-up" aria-label="Tăng Disc % Avr 1 điểm phần trăm">+</button>
+</div>
+</div>
 <div id="plan-search"><input id="plan-query" type="search" aria-label="Tìm Material, Batch, Sloc" placeholder="Tìm Material, Batch, Sloc…" autocomplete="off"></div>
 <div class="plan-actions"><button type="button" id="expand">Mở tất cả</button><button type="button" id="collapse">Thu đến Clarity</button></div>
 </div>
@@ -85,12 +92,11 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <div id="overview">
 <div class="overview-charts overview-three">
 <section class="panel chart-panel"><h2>Số viên kỳ vọng theo kết quả</h2><div class="legend"><span><i class="swatch one"></i>PA1</span><span><i class="swatch two"></i>PA2</span></div><div id="chart" class="chart"></div></section>
-<section class="panel chart-panel matrix-panel"><header><h2>Matrix định giá</h2><small data-summary-unit></small></header><div class="scroll"><table><thead><tr><th scope="col">Chỉ tiêu</th><th scope="col">PA1<br>Hiện tại</th><th scope="col">PA2<br>Giải pháp mới</th></tr></thead><tbody id="matrix"></tbody></table></div></section>
-<section class="panel chart-panel"><header><h2>Định giá hai phương án</h2></header><div class="scroll"><table><thead><tr><th scope="col">Chỉ tiêu</th><th scope="col" class="num">Phương án 1</th><th scope="col" class="num">Phương án 2</th></tr></thead><tbody id="comparison"></tbody></table></div></section>
-</div>
-<div class="overview-charts overview-three">
-<section class="panel chart-panel"><header><h2>So sánh giá trị</h2><small data-chart-unit></small></header><div id="chart-prices"></div></section>
+<section class="panel chart-panel"><header><h2>So sánh · Giá trị - Tổn thất - Chi phí · Hai phương án</h2></header><div class="scroll"><table><thead><tr><th scope="col">Chỉ tiêu</th><th scope="col" class="num">Phương án 1</th><th scope="col" class="num">Phương án 2</th></tr></thead><tbody id="comparison"></tbody></table></div></section>
 <section class="panel chart-panel"><header><h2>Chênh lệch theo độ tinh khiết</h2><small data-gap-unit></small></header><div class="legend"><span><i class="swatch one"></i>PA1</span><span><i class="swatch two"></i>PA2</span></div><div id="chart-clarity-gap"></div></section>
+</div>
+<div class="overview-charts overview-range-row">
+<section class="panel chart-panel"><header><h2>So sánh giá trị</h2><small data-chart-unit></small></header><div id="chart-prices"></div></section>
 <section class="panel chart-panel"><header><h2>Chênh lệch theo Range</h2><small data-gap-unit></small></header><div class="legend"><span><i class="swatch one"></i>PA1</span><span><i class="swatch two"></i>PA2</span></div><div id="chart-range-gap"></div></section>
 </div>
 <div class="overview-charts overview-four">
@@ -100,7 +106,14 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <section class="panel chart-panel"><header><h2>Cơ cấu tồn theo Range</h2></header><div id="chart-range"></div></section>
 </div>
 </div>
-<section id="details" class="panel" hidden><h2 id="detail-title">Chi tiết theo Batch</h2><p id="detail-status" class="hint"></p><div class="scroll"><table><thead id="detail-head"></thead><tbody id="detail-body"></tbody></table></div><div class="actions"><button id="prev" type="button">Trang trước</button><span id="page-info"></span><button id="next" type="button">Trang sau</button></div></section>
+<section id="details" class="quality-view" hidden>
+<div id="quality-summary" class="quality-summary" aria-label="Kết quả ba điều kiện kiểm tra"></div>
+<div class="panel quality-panel">
+<header><h2>Batch cần kiểm tra</h2><p id="detail-status" class="hint" role="status"></p></header>
+<div class="scroll" tabindex="0" role="region" aria-label="Chi tiết lỗi theo Batch"><table class="quality-table"><thead id="detail-head"></thead><tbody id="detail-body"></tbody></table></div>
+<div class="actions quality-pagination"><button id="prev" type="button">Trang trước</button><span id="page-info"></span><button id="next" type="button">Trang sau</button></div>
+</div>
+</section>
 </div>
 <section id="admin" class="stack" hidden>
 <div class="panel"><h2>Đăng nhập Admin</h2>

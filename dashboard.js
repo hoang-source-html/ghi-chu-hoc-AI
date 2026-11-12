@@ -6,17 +6,19 @@ const pages = {
   overview: ["Tổng quan", "", ""],
   pa1: ["PA1 · Hiện tại", "PA1 · Hiện tại", "Xác suất cuối, giá trị kỳ vọng và chi phí xử lý"],
   pa2: ["PA2 · Giải pháp mới", "PA2 · Giải pháp mới", "Xác suất cuối, giá trị kỳ vọng và chi phí xử lý"],
-  quality: ["Kiểm tra dữ liệu", "Kiểm tra dữ liệu", "Kiểm tra xác suất và giá định giá theo Batch"],
+  quality: ["Kiểm tra dữ liệu", "Kiểm tra dữ liệu", "Kiểm tra giá cơ sở và tổng hệ số của hai phương án theo Batch"],
   admin: ["Admin", "Quản trị dữ liệu", "Cập nhật tỷ lệ theo Batch"]
 };
 const number = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 2 });
+const factorPercent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 8 });
 const format = (value, style = number) => Number.isFinite(value) ? style.format(value) : "—";
 const valid = Number.isFinite;
 const sum = values => values.reduce((total, value) => total + value, 0);
 const epsilon = 1e-8;
 const pageSize = 50;
 let records = [];
+let allBaseValue = null;
 let connected = false;
 let page = "overview";
 let offset = 0;
@@ -39,7 +41,6 @@ const planFilters = [...document.querySelectorAll("[data-plan-filter]")];
 let po = "";
 let currency = "VND";
 let discount = -5;
-let basis = "price_avr";
 let theme = "light";
 let session = null;
 let pendingRates = null;
@@ -64,19 +65,6 @@ function roundCents(value) {
   return Math.sign(value) * Math.round(cents + Math.max(1, cents) * Number.EPSILON) / 100;
 }
 
-function selectedPrices(row, unit) {
-  if (!valid(unit) || !valid(row.price_avr)) return null;
-  if (unit === row.price_avr) return row.prices_usd;
-  if (!row.rap || !row.carat) return null;
-  const weightRatio = row.carat_size / row.carat;
-  const ratio = value => valid(value) ? value / row.rap : NaN;
-  const weight = value => valid(row.carat_size) ? ratio(value) * weightRatio : NaN;
-  const ratios = [1, ratio(row.rap_drop_1), ratio(row.rap_drop_2),
-    weight(row.rap_carat), 1, weight(row.rap_size)];
-  return row.prices_usd.map((price, index) => valid(price) && valid(ratios[index])
-    ? price + roundCents(unit * ratios[index]) - roundCents(row.price_avr * ratios[index]) : null);
-}
-
 function adjustmentLabel() {
   return (discount > 0 ? "+" : "") + discount + "%";
 }
@@ -85,12 +73,11 @@ function enrich(row) {
   const multiplier = 1 + discount / 100;
   const discounted = valid(row.rap_avr) && valid(row.carat)
     ? roundCents(row.rap_avr * row.carat * multiplier) : null;
-  const base = row[basis];
-  const unitPrices = selectedPrices(row, valid(base) ? base * multiplier : null);
+  const values = [row.value_factors, row.pa2_value_factors].map(factors => factors?.map((factor, i) =>
+    valid(factor) && valid(row.prices_usd?.[i]) ? row.prices_usd[i] * factor * multiplier : null));
+  const keep = row.prices_usd?.[0];
   return {
-    ...row, discounted, unitPrices, keep_price: row.prices_usd?.[0],
-    values: row.results.map(result => unitPrices && result.probabilities?.map((rate, index) =>
-      rate === 0 ? 0 : valid(unitPrices?.[index]) ? row.quantity * rate * unitPrices[index] : null))
+    ...row, discounted, keep_price: valid(keep) ? keep * multiplier : null, values
   };
 }
 
@@ -100,8 +87,7 @@ function totals() {
     coverage: Object.fromEntries(inventoryPriceKeys.map(key => [key, 0])),
     plans: [0, 1].map(() => ({
       outcomes: Array(6).fill(0), counts: Array(6).fill(0), coverage: Array(6).fill(0),
-      final: 0, complete: 0, completeQuantity: 0, rated: 0, current: 0, cost: 0, costCoverage: 0,
-      pricedQuantity: 0, missingQuantity: 0
+      final: 0, complete: 0, rated: 0
     }))
   };
 }
@@ -120,10 +106,6 @@ function addTotals(total, row) {
     const probabilities = row.results[i].probabilities;
     probabilities?.forEach((rate, j) => { plan.counts[j] += row.quantity * rate; });
     if (probabilities) plan.rated++;
-    if (valid(row.unitPrices?.[0])) plan.pricedQuantity += row.quantity;
-    if (probabilities?.some((rate, j) => rate > 0 && !valid(row.unitPrices?.[j]))) {
-      plan.missingQuantity += row.quantity;
-    }
     const values = row.values[i];
     if (!values) return;
     values.forEach((value, j) => {
@@ -133,16 +115,8 @@ function addTotals(total, row) {
       }
     });
     if (values.every(valid)) {
-      const expected = sum(values);
-      plan.final += expected;
+      plan.final += sum(values);
       plan.complete++;
-      plan.completeQuantity += row.quantity;
-      if (valid(row.unitPrices?.[0])) {
-        const current = row.unitPrices[0] * row.quantity;
-        plan.current += current;
-        plan.cost += current - expected;
-        plan.costCoverage++;
-      }
     }
   });
 }
@@ -216,14 +190,14 @@ function renderCards(total, index = null) {
   const cards = index === null ? total.plans.flatMap((plan, i) => [
     ...(i === 0 ? stock : weight),
     result(plan, i + 1),
+    difference(plan, "keep_price", `Tổn thất theo Phương án ${i + 1}`, "GT hiện tại"),
     difference(plan, "price_avr", `Chênh lệch KQ xử lý PA${i + 1} vs Avr RAP`, "Avr RAP"),
-    difference(plan, "price_wh", `Chênh lệch KQ xử lý PA${i + 1} vs WH`, "WH"),
-    difference(plan, "price_po", `Chênh lệch KQ xử lý PA${i + 1} vs PO`, "PO")
+    difference(plan, "price_wh", `Chênh lệch KQ xử lý PA${i + 1} vs WH`, "WH")
   ]) : [
     ...stock, result(total.plans[index], index + 1),
     difference(total.plans[index], "price_wh", "Chênh lệch KQ xử lý vs WH", "WH"),
     ...weight,
-    difference(total.plans[index], "price_po", "Chênh lệch KQ xử lý vs PO", "PO"),
+    difference(total.plans[index], "keep_price", `Tổn thất theo Phương án ${index + 1}`, "GT hiện tại"),
     difference(total.plans[index], "price_avr", "Chênh lệch KQ xử lý vs Avr RAP", "Avr RAP")
   ];
   byId("cards").classList.toggle("plan-cards", index !== null);
@@ -257,26 +231,37 @@ function hierarchy(rows) {
 
 function renderPlan(rows, index) {
   const title = index === 0 ? "Phương án 1 · Hiện tại" : "Phương án 2 · Giải pháp mới";
-  const discountedLabel = `Price Avr RAP (${adjustmentLabel()})`;
-  bases.discounted = discountedLabel;
   byId("plan-title").textContent = "Kết quả xử lý";
   const sign = discount < 0 ? "−" : "+";
+  const calculation = `Giá cơ sở × Hệ số Giá trị 6 cấp × (100% ${sign} ${Math.abs(discount)}%)`;
   byId("plan-caption").replaceChildren(
-    document.createTextNode(`${title} · ${bases[basis]} × (100% ${sign} ${Math.abs(discount)}%) · `),
+    document.createTextNode(`${title} · ${calculation} · `),
     element("strong", "USD", "plan-usd")
   );
-  const heads = ["Giấy / Clarity / Size", "SL", "Carat (ct)", ...Object.values(bases), ...outcomes,
-    "Final", `So sánh Avr RAP (${adjustmentLabel()})`, "So sánh PO", "So sánh WH"];
-  byId("plan-head").replaceChildren(tableRow(heads, "th", 1));
+  const heads = [
+    ["Giấy / Clarity", "/ Size"], ["SL"], ["Carat (ct)"], ["Price WH"], ["Price PO"], ["Price PO", "10%"],
+    ["Price Avr RAP"], ["Price Avr RAP", `(${adjustmentLabel()})`], ["Giá trị", "hiện tại"],
+    ...outcomes.map(name => [name]), ["Final"], ["So sánh", "GTHT"],
+    ["So sánh Avr RAP", `(${adjustmentLabel()})`], ["So sánh", "WH"]
+  ];
+  const header = document.createElement("tr");
+  for (const lines of heads) {
+    const th = document.createElement("th");
+    th.scope = "col";
+    lines.forEach(line => th.append(element("span", line)));
+    header.append(th);
+  }
+  byId("plan-head").replaceChildren(header);
+  const tablePrices = ["price_wh", "price_po", "price_po_10", "price_avr", "discounted", "keep_price"];
   const root = hierarchy(rows);
   renderCards(root.total, index);
   const body = document.createDocumentFragment();
   const makeRow = (label, total, depth, node, key) => {
     const plan = total.plans[index];
     const value = finalTotal(plan);
-    const changes = ["discounted", "price_po", "price_wh"].map(ref => gap(value, priceTotal(total, ref)));
+    const changes = ["keep_price", "discounted", "price_wh"].map(ref => gap(value, priceTotal(total, ref)));
     const cells = [label, connected ? format(total.quantity, moneyNumber) : "—",
-      connected ? format(total.carat, caratNumber) : "—", ...priceKeys.map(k => money(priceTotal(total, k), false, "USD")),
+      connected ? format(total.carat, caratNumber) : "—", ...tablePrices.map(k => money(priceTotal(total, k), false, "USD")),
       ...plan.outcomes.map((v, j) => money(plan.coverage[j] ? v : null, false, "USD")), money(value, false, "USD"),
       ...changes.map(v => format(v, percent))];
     const tr = tableRow(cells, "td", 1);
@@ -334,32 +319,15 @@ function setTree(open) {
 }
 
 
-function calculate(params, afterPolish, prices, quantity) {
+function calculate(params, afterPolish) {
   const complete = values => Array.isArray(values) && values.length === 6 && values.every(valid);
-  if (!complete(params) || !complete(afterPolish)) return { issue: "Thiếu tỷ lệ" };
+  if (!complete(params) || !complete(afterPolish)) return {};
   const [a, b, c, d, e, l] = params;
   const keep = a * b + l;
   const seal = a * (1 - b) * c + (1 - a - l) * d * e;
   const polish = 1 - keep - seal;
   const probabilities = afterPolish.map((rate, index) => polish * rate + ([keep, seal][index] ?? 0));
-  const badRate = [...params, ...afterPolish, keep, seal, polish, ...probabilities]
-    .some(rate => rate < -epsilon || rate > 1 + epsilon);
-  const badTotal = Math.abs(sum(afterPolish) - 1) > epsilon || Math.abs(sum(probabilities) - 1) > epsilon;
-  const issues = [];
-  if (badRate || badTotal) issues.push("Tỷ lệ ngoài khoảng hoặc tổng khác 100%");
-  if (!valid(prices?.[0])) issues.push("Chưa có giá giữ CL");
-  if (probabilities.some((rate, index) => rate > epsilon && !valid(prices?.[index]))) {
-    issues.push("Thiếu giá của kết quả có xác suất dương");
-  }
-  const expected = valid(prices?.[0])
-    ? sum(probabilities.map((rate, index) => rate * (prices[index] ?? 0))) : null;
-  return {
-    probabilities,
-    current: valid(prices?.[0]) ? quantity * prices[0] : null,
-    expected: expected === null ? null : quantity * expected,
-    cost: expected === null ? null : quantity * (prices[0] - expected),
-    issue: issues.join(" · ")
-  };
+  return { probabilities };
 }
 
 function element(tag, value, className) {
@@ -551,7 +519,6 @@ function renderOverviewCharts(total, rows) {
   const unit = currency === "VND" ? "tỷ VND" : "triệu USD";
   document.querySelectorAll("[data-chart-unit]").forEach(node => { node.textContent = unit; });
   document.querySelectorAll("[data-gap-unit]").forEach(node => { node.textContent = "Final − WH · " + unit; });
-  document.querySelectorAll("[data-summary-unit]").forEach(node => { node.textContent = unit; });
   const clarity = overviewGroups(rows, "clarity");
   const cert = overviewGroups(rows, "certificate");
   const range = overviewGroups(rows, "carat_range");
@@ -566,7 +533,7 @@ function renderOverviewCharts(total, rows) {
     ({ name: bases[key], value: priceTotal(total, key), color: chartColors[i] })), "So sánh giá trị");
   drawPairs(byId("chart-clarity-gap"), clarity.map(delta), "Chênh lệch theo độ tinh khiết");
   drawPairs(byId("chart-range-gap"), [...range].sort((a, b) => (parseFloat(b.label) || 0) - (parseFloat(a.label) || 0))
-    .map(delta), "Chênh lệch theo Range");
+    .map(delta), "Chênh lệch theo Range", chartAmount, false);
 }
 
 function drawPairs(target, entries, label, valueLabel = chartAmount, scroll = true) {
@@ -598,66 +565,68 @@ function drawPairs(target, entries, label, valueLabel = chartAmount, scroll = tr
   target.replaceChildren(list);
 }
 
-function renderMatrix(total) {
-  const plans = total.plans;
-  const avr = priceTotal(total, "price_avr");
-  const final = plans.map(finalTotal);
-  const cost = final.map(value => valid(avr) && valid(value) ? avr - value : null);
-  const monetary = values => values.map(summaryAmount);
-  const quantity = key => plans.map(plan => connected ? format(plan[key], wholeNumber) : "—");
-  const ratios = cost.map(value => valid(value) && avr !== 0 ? format(value / avr, percent) : "—");
-  const data = [
-    ["Số viên đã có giá", ...quantity("pricedQuantity")],
-    ["Số viên thiếu giá trạng thái có xác suất > 0", ...quantity("missingQuantity")],
-    ["Giá trị hiện tại (Tổng giá trị theo Avr RAP)", ...monetary([avr, avr])],
-    ["Giá trị kỳ vọng sau xử lý", ...monetary(final)],
-    ["Chi phí xử lý", ...monetary(cost)],
-    ["% chi phí trên giá trị hiện tại", ...ratios]
-  ];
-  byId("matrix").replaceChildren(...data.map(cells => tableRow(cells, "td", 1)));
-}
-
 function renderOverview(total, rows) {
   renderOverviewCharts(total, rows);
   const summaries = total.plans;
-  renderMatrix(total);
   drawPairs(byId("chart"), outcomes.map((name, i) => ({
     name, values: summaries.map(summary => summary.rated ? summary.counts[i] : null)
   })), "Số viên kỳ vọng theo kết quả", value => format(value, wholeNumber) + " viên", false);
   const comparison = byId("comparison");
   comparison.replaceChildren();
-  for (const [label, value] of [
-    ["Giá cơ sở", () => priceTotal(total, basis)],
-    ["Giá trị hiện tại", plan => plan.costCoverage ? plan.current : null],
-    ["Giá trị kỳ vọng", finalTotal],
-    ["Chi phí xử lý", plan => plan.costCoverage ? plan.cost : null]
+  const current = priceTotal(total, "keep_price");
+  const finals = summaries.map(finalTotal);
+  const losses = finals.map(value => valid(current) && valid(value) ? current - value : null);
+  for (const [label, values] of [
+    ["Giá cơ sở", [allBaseValue, allBaseValue]],
+    ["Giá trị hiện tại", [current, current]],
+    ["Giá trị kỳ vọng", finals],
+    ["Tổn thất", losses]
   ]) {
-    comparison.append(tableRow([label, ...summaries.map(plan => summaryAmount(value(plan)))], "td", 1));
+    comparison.append(tableRow([label, ...values.map(summaryAmount)], "td", 1));
   }
-  comparison.append(tableRow(["Số viên đủ Final", ...summaries.map(plan =>
-    connected ? format(plan.completeQuantity, wholeNumber) + " viên" : "—")], "td", 1));
+  comparison.append(tableRow(["Tỷ lệ tổn thất", ...losses.map(loss =>
+    format(valid(loss) && current !== 0 ? loss / current : null, percent))], "td", 1));
 }
 
 function renderDetails(rows) {
-  const quality = page === "quality";
-  const index = page === "pa2" ? 1 : 0;
-  const visible = quality ? rows.filter(row => row.results.some(result => result.issue)) : rows;
-  const headers = quality
-    ? ["Batch", "Nhóm tồn", "PA1", "PA2"]
-    : ["Batch", "Nhóm tồn", "Trạng thái", "SL", ...outcomes, "Kỳ vọng (USD)", "Chi phí (USD)"];
-  byId("detail-title").textContent = quality ? "Batch cần kiểm tra" : "Chi tiết theo Batch";
+  const criteria = ["Thiếu Giá cơ sở", "Tổng hệ số PA1 khác 100%", "Tổng hệ số PA2 khác 100%"];
+  const visible = [];
+  const counts = [0, 0, 0];
+  for (const row of rows) {
+    if (row.quality.some(check => check.issue)) visible.push(row);
+    row.quality.forEach((check, i) => { if (check.issue) counts[i]++; });
+  }
+  byId("quality-summary").replaceChildren(...criteria.map((label, i) => {
+    const card = element("article", "", "quality-stat" + (counts[i] ? " has-issues" : ""));
+    card.append(element("span", label), element("strong", connected ? format(counts[i], wholeNumber) : "—"),
+      element("small", "Batch cần kiểm tra"));
+    return card;
+  }));
+  const headers = ["Batch", "Nhóm tồn", "Giá cơ sở", "Tổng Hệ số Giá trị 6 cấp",
+    "Tổng Hệ số Giá trị 6 cấp Phương án 2"];
   byId("detail-status").textContent = connected
-    ? `${format(visible.length)} Batch` : "Chưa có dữ liệu báo cáo.";
-  byId("detail-head").replaceChildren(tableRow(headers, "th", quality ? Infinity : 3));
+    ? `${format(visible.length, wholeNumber)} / ${format(rows.length, wholeNumber)} Batch cần kiểm tra`
+    : "Chưa có dữ liệu báo cáo.";
+  const header = tableRow(headers, "th");
+  for (const cell of header.cells) cell.scope = "col";
+  byId("detail-head").replaceChildren(header);
   const body = byId("detail-body");
   body.replaceChildren();
   for (const row of visible.slice(offset, offset + pageSize)) {
-    const result = row.results[index];
-    const cells = quality ? [row.batch, row.group_name, ...row.results.map(value => value.issue || "OK")]
-      : [row.batch, row.group_name, row.stock_status, format(row.quantity),
-        ...outcomes.map((_, j) => format(result.probabilities?.[j], percent)),
-        format(result.expected), format(result.cost)];
-    body.append(tableRow(cells, "td", quality ? Infinity : 3));
+    const tr = tableRow([row.batch, row.group_name]);
+    for (const check of row.quality) {
+      const cell = tr.insertCell();
+      cell.append(element("span", check.issue ? "Kiểm tra" : "Đạt", check.issue ? "quality-badge warning" : "quality-badge"));
+      cell.append(element("small", check.detail, "quality-cell-detail"));
+    }
+    body.append(tr);
+  }
+  if (!visible.length) {
+    const row = tableRow([!connected ? "Đang chờ dữ liệu báo cáo." : rows.length
+      ? "Không phát hiện lỗi trong ba điều kiện kiểm tra." : "Không có Batch phù hợp với bộ lọc."]);
+    row.cells[0].colSpan = headers.length;
+    row.cells[0].className = "quality-empty";
+    body.append(row);
   }
   byId("prev").disabled = offset === 0;
   byId("next").disabled = offset + pageSize >= visible.length;
@@ -716,14 +685,34 @@ function render() {
   }
 }
 
+function checkFactorTotal(factors) {
+  if (!factors?.every(valid)) return { issue: true, detail: "Thiếu hệ số" };
+  const total = sum(factors);
+  return { issue: Math.abs(total - 1) > epsilon, detail: format(total, factorPercent) };
+}
+
 function setRecords(rows, online) {
   connected = online;
-  records = rows.map(row => ({
-    ...row,
-    search: [row.batch, row.material, row.sloc].filter(Boolean).join(" ").toUpperCase(),
-    results: [row.pa1_params, row.pa2_params].map(params =>
-      calculate(params, row.after_polish, row.prices_usd, row.quantity))
-  }));
+  allBaseValue = null;
+  for (const row of rows) {
+    if (valid(row.prices_usd?.[0])) {
+      allBaseValue = (allBaseValue ?? 0) + row.prices_usd[0] * row.quantity;
+    }
+  }
+  records = rows.map(row => {
+    const six = values => Array.isArray(values) && values.length === 6 ? values : null;
+    const factors = six(row.value_factors);
+    const pa2Factors = six(row.pa2_value_factors);
+    const missing = outcomes.filter((_, i) => !valid(row.prices_usd?.[i]));
+    return {
+      ...row, value_factors: factors, pa2_value_factors: pa2Factors,
+      quality: [{ issue: missing.length > 0, detail: missing.length ? `Thiếu: ${missing.join(", ")}` : "Đủ 6 giá" },
+        checkFactorTotal(factors), checkFactorTotal(pa2Factors)],
+      search: [row.batch, row.material, row.sloc].filter(Boolean).join(" ").toUpperCase(),
+      results: [row.pa1_params, row.pa2_params].map(params =>
+        calculate(params, row.after_polish))
+    };
+  });
   const controls = [[byId("group"), "group_name"], [byId("state"), "stock_status"],
     ...planFilters.map(select => [select, select.dataset.planFilter])];
   const collator = new Intl.Collator("vi", { numeric: true });
@@ -759,7 +748,7 @@ async function loadReport() {
     let after = "";
     const columns = "batch,group_name,stock_status,quantity,pa1_params,pa2_params,after_polish,prices_usd,"
       + "po_type,material,sloc,certificate,clarity,size,carat,price_wh,price_po,price_po_10,price_avr,price_best,"
-      + "rap_avr,rap,rap_drop_1,rap_drop_2,rap_carat,rap_size,carat_size,purchase_source,carat_range,color";
+      + "rap_avr,purchase_source,carat_range,color,value_factors,pa2_value_factors";
     while (true) {
       const params = new URLSearchParams({ select: columns, order: "batch.asc", limit: "1000" });
       if (after) params.set("batch", "gt." + after);
@@ -841,11 +830,28 @@ for (const button of document.querySelectorAll("button[data-po],button[data-curr
     render();
   });
 }
-byId("price-basis").replaceChildren(...Object.entries(bases)
-  .filter(([key]) => key !== "discounted").map(([key, label]) => new Option(label, key)));
-byId("price-basis").value = basis;
-byId("price-basis").addEventListener("change", event => { basis = event.target.value; render(); });
 const discountInput = byId("discount");
+function formatDiscountInput() {
+  discountInput.value = adjustmentLabel();
+  discountInput.removeAttribute("aria-invalid");
+  byId("discount-error").hidden = true;
+}
+
+function stepDiscount(step) {
+  const next = discount + step;
+  if (!Number.isSafeInteger(next)) return;
+  discount = next;
+  formatDiscountInput();
+  render();
+}
+
+byId("discount-down").addEventListener("click", () => stepDiscount(-1));
+byId("discount-up").addEventListener("click", () => stepDiscount(1));
+discountInput.addEventListener("keydown", event => {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+  event.preventDefault();
+  stepDiscount(event.key === "ArrowUp" ? 1 : -1);
+});
 discountInput.addEventListener("input", () => {
   const match = /^([+-]?\d+)\s*%?$/.exec(discountInput.value.trim().replace("−", "-"));
   const value = match ? Number(match[1]) : NaN;
@@ -857,11 +863,7 @@ discountInput.addEventListener("input", () => {
     render();
   }
 });
-discountInput.addEventListener("blur", () => {
-  discountInput.value = adjustmentLabel();
-  discountInput.removeAttribute("aria-invalid");
-  byId("discount-error").hidden = true;
-});
+discountInput.addEventListener("blur", formatDiscountInput);
 byId("expand").addEventListener("click", () => setTree(true));
 byId("collapse").addEventListener("click", () => setTree(false));
 planFilters.forEach(select => select.addEventListener("change", render));
@@ -943,6 +945,7 @@ byId("admin-form").addEventListener("submit", async event => {
   savingRates = true;
   const feedback = byId("admin-feedback");
   const activeSession = session;
+  const update = pendingRates;
   const fields = ["rate-form", "rate-data", "preview-rates", "save-rates"];
   fields.forEach(id => { byId(id).disabled = true; });
   feedback.textContent = "Đang lưu tỷ lệ…";
@@ -950,12 +953,13 @@ byId("admin-form").addEventListener("submit", async event => {
     const count = await responseJson(projectOrigin + "/rest/v1/rpc/kcr_update_rates", {
       method: "POST",
       headers: { ...activeSession.headers, "Content-Type": "application/json" },
-      body: JSON.stringify(pendingRates)
+      body: JSON.stringify(update)
     });
     if (activeSession === session) {
       byId("rate-data").value = "";
       resetRatePreview();
       feedback.textContent = `Đã lưu ${format(count)} Batch lên Supabase.`;
+      if (update.form === "six_outcomes") loadReport();
     }
   } catch (error) {
     if (activeSession === session) feedback.textContent = "Chưa lưu dữ liệu. " + error.message;
@@ -974,6 +978,10 @@ function navigate() {
   render();
 }
 window.addEventListener("hashchange", navigate);
+document.querySelector(".skip-link").addEventListener("click", event => {
+  event.preventDefault();
+  byId("report-main").focus({ preventScroll: true });
+});
 const banner = document.querySelector(".top");
 const sidebar = document.querySelector(".layout > aside");
 function measureBanner() {
