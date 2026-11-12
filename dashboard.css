@@ -3,12 +3,20 @@
 body{background:var(--page)}
 .layout{grid-template-columns:194px minmax(0,1fr)}
 .layout>aside{position:sticky;top:0;align-self:start;height:100dvh;overflow:auto;z-index:13}
-.top{position:sticky;top:0;z-index:12;align-items:center;background:var(--surface);gap:8px 14px;padding:8px clamp(10px,1.5vw,24px)}
+.top{position:sticky;top:0;z-index:12;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) max-content;grid-template-areas:"title discount actions" "po currency currency";align-items:center;background:var(--surface);gap:8px 14px;padding:8px clamp(10px,1.5vw,24px)}
 .top-end,.segments,.plan-actions{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.top-end{justify-content:flex-end;gap:8px;margin-left:auto}
-@media(min-width:1181px){
-  .top{display:grid;grid-template-columns:minmax(130px,auto) repeat(2,minmax(0,1fr)) minmax(160px,1fr)}
+.top-end{grid-area:actions;justify-content:flex-end;gap:8px;justify-self:end}
+.top>#page-name{grid-area:title;min-width:0;min-height:40px;display:flex;align-items:center;line-height:1.25}
+.top>.discount-control{grid-area:discount;justify-self:start;flex-wrap:nowrap}
+.top>.banner-po{grid-area:po;justify-self:start}
+.top>.banner-currency{grid-area:currency;justify-self:start}
+.top>.status,.top>.discount-error{grid-column:1/-1}
+@media(min-width:1280px){
+  .top{grid-template-columns:minmax(145px,1fr) repeat(3,minmax(max-content,1.35fr)) max-content;grid-template-areas:"title discount po currency actions"}
   .top>.segments{justify-self:center}
+}
+@media(max-width:620px){
+  .top{grid-template-columns:minmax(0,1fr) max-content;grid-template-areas:"title actions" "discount discount" "po po" "currency currency"}
 }
 .segments{border:1px solid var(--line);border-radius:7px;padding:3px}
 .segments span{font-size:12px;padding:0 5px;color:var(--muted)}
@@ -38,10 +46,11 @@ body{background:var(--page)}
 .plan-toolbar label{font-size:12px;display:flex;align-items:center}
 .plan-toolbar input,.plan-toolbar select,.plan-toolbar button{min-height:32px;font-size:12px;padding:4px 7px}
 .discount-control,.discount-stepper{display:flex;align-items:center;gap:4px}
-.discount-control{gap:6px}
-.discount-stepper button{width:30px;font-size:16px;line-height:1}
-#discount{width:64px;text-align:center;font-variant-numeric:tabular-nums}
-.discount-error{padding:0 10px 6px;font-size:12px}
+.discount-control{gap:6px;padding-inline:7px}
+.discount-control label{font-size:12px;white-space:nowrap}
+.discount-stepper button{width:30px;font-size:16px;line-height:1;border-color:var(--line)}
+#discount{width:64px;min-height:30px;padding:3px 6px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums}
+.discount-error{font-size:12px}
 #plan-search{display:grid}
 #plan-search input{width:clamp(150px,16vw,250px)}
 .plan-usd{font-weight:700;color:var(--negative)}
@@ -74,7 +83,7 @@ body{background:var(--page)}
 .tree-item{padding-inline-start:24px}
 .final-cell{font-weight:700}
 textarea{font:inherit;border:1px solid var(--line);border-radius:7px;padding:8px;min-width:0}
-@media(max-width:1180px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.card.reserve{display:none}.top-end{margin-left:0}}
+@media(max-width:1180px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.card.reserve{display:none}}
 @media(max-width:800px){
   .layout{display:block}
   .layout>aside{height:auto;padding:8px 12px}

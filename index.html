@@ -45,9 +45,19 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <main id="report-main" tabindex="-1">
 <header class="top">
 <strong id="page-name">Tổng quan</strong>
-<div class="segments" role="group" aria-label="Loại PO"><span>Loại PO</span><button type="button" data-po="">Tất cả</button><button type="button" data-po="Nhập khẩu">Nhập khẩu</button><button type="button" data-po="Khác">Khác</button></div>
-<div class="segments" role="group" aria-label="Đơn vị tiền"><button type="button" data-currency="USD">USD</button><button type="button" data-currency="VND">VND</button><span>1 USD = 25,840 VND</span></div>
-<div class="top-end"><span id="status" class="status" role="status"></span><div class="segments" role="group" aria-label="Giao diện"><button type="button" data-theme="light">Sáng</button><button type="button" data-theme="dark">Tối</button></div><a class="admin-link" href="#admin">Admin</a></div>
+<div class="segments discount-control">
+<label for="discount">Disc % Avr</label>
+<div class="discount-stepper">
+<button type="button" id="discount-down" aria-label="Giảm Disc % Avr 1 điểm phần trăm">−</button>
+<input id="discount" type="text" inputmode="text" value="-5%" spellcheck="false" aria-describedby="discount-error">
+<button type="button" id="discount-up" aria-label="Tăng Disc % Avr 1 điểm phần trăm">+</button>
+</div>
+</div>
+<div class="segments banner-po" role="group" aria-label="Loại PO"><span>Loại PO</span><button type="button" data-po="">Tất cả</button><button type="button" data-po="Nhập khẩu">Nhập khẩu</button><button type="button" data-po="Khác">Khác</button></div>
+<div class="segments banner-currency" role="group" aria-label="Đơn vị tiền"><button type="button" data-currency="USD">USD</button><button type="button" data-currency="VND">VND</button><span>1 USD = 25,840 VND</span></div>
+<div class="top-end"><div class="segments" role="group" aria-label="Giao diện"><button type="button" data-theme="light">Sáng</button><button type="button" data-theme="dark">Tối</button></div><a class="admin-link" href="#admin">Admin</a></div>
+<span id="status" class="status" role="status"></span>
+<p id="discount-error" class="discount-error loss" role="status" hidden>Nhập số nguyên, ví dụ −5%, 0% hoặc +2%.</p>
 </header>
 <div class="content">
 <div id="report-error" class="notice actions" hidden><span id="report-error-message" role="status"></span><button id="retry-report" type="button">Tải lại dữ liệu</button></div>
@@ -62,18 +72,9 @@ label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;b
 <section id="plan" class="panel" hidden>
 <div class="plan-toolbar">
 <div><h2 id="plan-title"></h2><p id="plan-caption" class="hint"></p></div>
-<div class="discount-control">
-<label for="discount">Disc % Avr</label>
-<div class="discount-stepper">
-<button type="button" id="discount-down" aria-label="Giảm Disc % Avr 1 điểm phần trăm">−</button>
-<input id="discount" type="text" inputmode="text" value="-5%" spellcheck="false" aria-describedby="discount-error">
-<button type="button" id="discount-up" aria-label="Tăng Disc % Avr 1 điểm phần trăm">+</button>
-</div>
-</div>
 <div id="plan-search"><input id="plan-query" type="search" aria-label="Tìm Material, Batch, Sloc" placeholder="Tìm Material, Batch, Sloc…" autocomplete="off"></div>
 <div class="plan-actions"><button type="button" id="expand">Mở tất cả</button><button type="button" id="collapse">Thu đến Clarity</button></div>
 </div>
-<p id="discount-error" class="discount-error loss" role="status" hidden>Nhập số nguyên, ví dụ −5%, 0% hoặc +2%.</p>
 <div class="plan-filters" role="group" aria-label="Bộ lọc bảng phương án">
 <label>Nhóm tồn<select data-plan-filter="group_name"></select></label>
 <label>Mua lại / Thu hồi<select data-plan-filter="purchase_source"></select></label>
