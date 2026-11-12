@@ -1,3 +1,135 @@
-<h>Ghi chú nhanh</h>
-<p>Bước 1: </p>
-<p>Bước 2:</p>
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KCR PMH | So sánh phương án xử lý</title>
+<link rel="icon" type="image/png" href="icon-diamond.png">
+<style>
+:root{color-scheme:light;--nav:#103335;--ink:#183236;--muted:#4f6769;--line:#dce8e6;--teal:#08796d;--blue:#486cb7}
+*{box-sizing:border-box}
+body{margin:0;background:#f3f7f6;color:var(--ink);font:15px/1.5 "Segoe UI",Arial,sans-serif}
+button,input,select{font:inherit}
+a{color:inherit} :focus-visible{outline:3px solid #397eea;outline-offset:3px}
+.layout{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:100vh}
+aside{background:var(--nav);color:#fff;padding:25px 16px}
+.brand{display:flex;align-items:center;gap:12px;margin:0 7px 33px}
+.mark{display:block;width:38px;height:38px;object-fit:contain;flex:none}
+.brand strong,.brand small{display:block}.brand small{color:#abd1ce}
+nav{display:grid;gap:5px}nav a{padding:10px 12px;border-radius:8px;color:#c5ddda;text-decoration:none}nav a[aria-current]{background:#245356;color:white;font-weight:600}nav a:hover{background:#20474a}
+main{min-width:0}.top{padding:16px clamp(16px,3vw,38px);background:white;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.status{color:var(--muted)}
+.content{max-width:1450px;margin:auto;padding:24px clamp(16px,3vw,38px)}
+.hero{border-radius:14px;background:linear-gradient(110deg,#104748,#087d70);color:white;padding:24px 28px;margin-bottom:18px}
+h1,h2,p{margin:0}h1{font-size:clamp(24px,3.2vw,36px);line-height:1.15}h2{font-size:19px}.hero p{margin-top:8px;color:#e2f7f1}
+.filters,.cards,.panels{display:grid;gap:12px;margin:16px 0}.filters{grid-template-columns:repeat(3,minmax(0,1fr))}.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.panels{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
+.card,.panel{min-width:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}.card span,.hint{color:var(--muted)}.card strong{display:block;margin-top:6px;font-size:clamp(18px,2.5vw,27px);font-variant-numeric:tabular-nums}
+label{display:grid;gap:4px;font-weight:600}input,select,button{min-height:40px;border:1px solid #aabebb;border-radius:7px;background:white;color:var(--ink);padding:7px 10px}button{cursor:pointer}button.primary{background:var(--teal);color:white;border-color:var(--teal)}button:disabled{opacity:.55;cursor:default}
+.scroll{overflow:auto;margin-top:9px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}th{background:#edf5f3;font-size:13px}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.legend,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}.one{background:var(--teal)}.two{background:var(--blue)}
+.chart{display:grid;gap:8px;margin-top:15px}.bar-group{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center}.bar-line{display:grid;grid-template-columns:1fr 70px;gap:6px;align-items:center;text-align:right;font-variant-numeric:tabular-nums}.track{background:#eaf2f0;height:7px;border-radius:5px}.fill{display:block;height:100%;border-radius:inherit}
+.notice{padding:10px 12px;background:#eff7f5;border-radius:8px;margin-top:12px}.form{display:grid;gap:11px;max-width:450px;margin-top:13px}.stack{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}ul{margin:8px 0;padding-left:22px}[hidden]{display:none!important}
+@media(max-width:950px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.panels{grid-template-columns:1fr}}
+@media(max-width:680px){.layout{display:block}aside{padding:12px 16px}.brand{margin:0 0 9px}nav{display:flex;flex-wrap:wrap;gap:2px}nav a{padding:7px 9px}.filters{grid-template-columns:1fr}.hero{padding:18px}.content{padding-top:14px}}
+</style>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="layout">
+<aside>
+<div class="brand"><img class="mark" src="icon-diamond.png" alt="" width="38" height="38"><div><strong>KCR PMH</strong><small>Phân tích tồn kho</small></div></div>
+<nav aria-label="Điều hướng">
+<a href="#overview">Tổng quan</a><a href="#pa1">PA1 · Hiện tại</a><a href="#pa2">PA2 · Giải pháp mới</a><a href="#quality">Kiểm tra dữ liệu</a>
+</nav>
+</aside>
+<main>
+<header class="top">
+<strong id="page-name">Tổng quan</strong>
+<div class="segments" role="group" aria-label="Loại PO"><span>Loại PO</span><button type="button" data-po="">Tất cả</button><button type="button" data-po="Nhập khẩu">Nhập khẩu</button><button type="button" data-po="Khác">Khác</button></div>
+<div class="segments" role="group" aria-label="Đơn vị tiền"><button type="button" data-currency="USD">USD</button><button type="button" data-currency="VND">VND</button><span>1 USD = 25,840 VND</span></div>
+<div class="top-end"><span id="status" class="status" role="status"></span><div class="segments" role="group" aria-label="Giao diện"><button type="button" data-theme="light">Sáng</button><button type="button" data-theme="dark">Tối</button></div><a class="admin-link" href="#admin">Admin</a></div>
+</header>
+<div class="content">
+<div id="report-error" class="notice actions" hidden><span id="report-error-message" role="status"></span><button id="retry-report" type="button">Tải lại dữ liệu</button></div>
+<section class="hero" id="hero" hidden><h1 id="title"></h1><p id="subtitle"></p></section>
+<div id="analysis">
+<div class="filters" id="filters" hidden>
+<label>Tìm kiếm<input id="batch" type="search" placeholder="Tìm Material, Batch, Sloc…" autocomplete="off"></label>
+<label>Nhóm tồn<select id="group"><option value="">Tất cả</option></select></label>
+<label>Trạng thái<select id="state"><option value="">Tất cả</option></select></label>
+</div>
+<section id="cards" class="cards" aria-label="Chỉ số"></section>
+<section id="plan" class="panel" hidden>
+<div class="plan-toolbar">
+<div><h2 id="plan-title"></h2><p id="plan-caption" class="hint"></p></div>
+<label>Giá cơ sở<select id="price-basis"></select></label>
+<label>Disc % Avr<input id="discount" type="text" inputmode="text" value="-5%" spellcheck="false" aria-describedby="discount-error"></label>
+<div id="plan-search"><input id="plan-query" type="search" aria-label="Tìm Material, Batch, Sloc" placeholder="Tìm Material, Batch, Sloc…" autocomplete="off"></div>
+<div class="plan-actions"><button type="button" id="expand">Mở tất cả</button><button type="button" id="collapse">Thu đến Clarity</button></div>
+</div>
+<p id="discount-error" class="discount-error loss" role="status" hidden>Nhập số nguyên, ví dụ −5%, 0% hoặc +2%.</p>
+<div class="plan-filters" role="group" aria-label="Bộ lọc bảng phương án">
+<label>Nhóm tồn<select data-plan-filter="group_name"></select></label>
+<label>Mua lại / Thu hồi<select data-plan-filter="purchase_source"></select></label>
+<label>Loại kiểm định<select data-plan-filter="certificate"></select></label>
+<label>Khung carat<select data-plan-filter="carat_range"></select></label>
+<label>Độ tinh khiết (Clarity)<select data-plan-filter="clarity"></select></label>
+<label>Màu (Color)<select data-plan-filter="color"></select></label>
+<label>Size (ly)<select data-plan-filter="size"></select></label>
+<label>Trạng thái tồn<select data-plan-filter="stock_status"></select></label>
+<button type="button" id="reset-plan-filters">Đặt lại</button>
+</div>
+<div class="scroll plan-scroll" tabindex="0" role="region" aria-label="Bảng kết quả xử lý">
+<table id="plan-table"><thead id="plan-head"></thead><tbody id="plan-body"></tbody><tfoot id="plan-foot"></tfoot></table>
+</div>
+</section>
+<div id="overview">
+<div class="overview-charts overview-three">
+<section class="panel chart-panel"><h2>Số viên kỳ vọng theo kết quả</h2><div class="legend"><span><i class="swatch one"></i>PA1</span><span><i class="swatch two"></i>PA2</span></div><div id="chart" class="chart"></div></section>
+<section class="panel chart-panel matrix-panel"><header><h2>Matrix định giá</h2><small data-summary-unit></small></header><div class="scroll"><table><thead><tr><th scope="col">Chỉ tiêu</th><th scope="col">PA1<br>Hiện tại</th><th scope="col">PA2<br>Giải pháp mới</th></tr></thead><tbody id="matrix"></tbody></table></div></section>
+<section class="panel chart-panel"><header><h2>Định giá hai phương án</h2></header><div class="scroll"><table><thead><tr><th scope="col">Chỉ tiêu</th><th scope="col" class="num">Phương án 1</th><th scope="col" class="num">Phương án 2</th></tr></thead><tbody id="comparison"></tbody></table></div></section>
+</div>
+<div class="overview-charts overview-three">
+<section class="panel chart-panel"><header><h2>So sánh giá trị</h2><small data-chart-unit></small></header><div id="chart-prices"></div></section>
+<section class="panel chart-panel"><header><h2>Chênh lệch theo độ tinh khiết</h2><small data-gap-unit></small></header><div class="legend"><span><i class="swatch one"></i>PA1</span><span><i class="swatch two"></i>PA2</span></div><div id="chart-clarity-gap"></div></section>
+<section class="panel chart-panel"><header><h2>Chênh lệch theo Range</h2><small data-gap-unit></small></header><div class="legend"><span><i class="swatch one"></i>PA1</span><span><i class="swatch two"></i>PA2</span></div><div id="chart-range-gap"></div></section>
+</div>
+<div class="overview-charts overview-four">
+<section class="panel chart-panel"><header><h2>So sánh PA1 và PA2</h2><small data-chart-unit></small></header><div id="chart-plans"></div></section>
+<section class="panel chart-panel"><header><h2>Cơ cấu tồn theo Chất lượng</h2></header><div id="chart-clarity"></div></section>
+<section class="panel chart-panel"><header><h2>Cơ cấu tồn theo Loại kiểm định</h2></header><div id="chart-cert"></div></section>
+<section class="panel chart-panel"><header><h2>Cơ cấu tồn theo Range</h2></header><div id="chart-range"></div></section>
+</div>
+</div>
+<section id="details" class="panel" hidden><h2 id="detail-title">Chi tiết theo Batch</h2><p id="detail-status" class="hint"></p><div class="scroll"><table><thead id="detail-head"></thead><tbody id="detail-body"></tbody></table></div><div class="actions"><button id="prev" type="button">Trang trước</button><span id="page-info"></span><button id="next" type="button">Trang sau</button></div></section>
+</div>
+<section id="admin" class="stack" hidden>
+<div class="panel"><h2>Đăng nhập Admin</h2>
+<form id="connect" class="form">
+<label>Email đăng nhập<input id="email" type="email" autocomplete="username" required></label>
+<label>Mật khẩu<input id="password" type="password" autocomplete="current-password" required></label>
+<button id="login" class="primary">Đăng nhập</button>
+</form>
+<button id="disconnect" type="button" hidden>Đăng xuất</button>
+<p id="connection-feedback" class="notice" role="status" hidden></p>
+</div>
+<div id="admin-updates" class="panel" hidden>
+<h2>Cập nhật tỷ lệ từ Excel</h2>
+<p id="admin-feedback" class="notice" role="status"></p>
+<form id="admin-form" class="form" hidden>
+<label>Mẫu cập nhật<select id="rate-form"><option value="three_steps">Tỷ lệ 3 bước · AW:BL</option><option value="six_outcomes">Tỷ lệ 6 TH rớt · CH:CM</option></select></label>
+<p id="rate-instructions" class="hint"></p>
+<label>Dữ liệu Excel<textarea id="rate-data" rows="7" spellcheck="false" required></textarea></label>
+<div class="actions"><button id="preview-rates" type="button">Kiểm tra dữ liệu</button><button id="save-rates" type="submit" class="primary" disabled>Lưu lên Supabase</button></div>
+</form>
+</div>
+</section>
+</div>
+</main>
+</div>
+<script src="dashboard.js" defer></script>
+</body>
+</html>
+
+
+
+
