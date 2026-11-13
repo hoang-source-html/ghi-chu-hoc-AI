@@ -15,11 +15,9 @@ body{background:var(--page)}
   .top{grid-template-columns:minmax(145px,1fr) repeat(3,minmax(max-content,1.35fr)) max-content;grid-template-areas:"title discount po currency actions"}
   .top>.segments{justify-self:center}
 }
-@media(max-width:620px){
-  .top{grid-template-columns:minmax(0,1fr) max-content;grid-template-areas:"title actions" "discount discount" "po po" "currency currency"}
-}
 .segments{border:1px solid var(--line);border-radius:7px;padding:3px}
 .segments span{font-size:12px;padding:0 5px;color:var(--muted)}
+.segments .rate-prefix{padding:0}
 .segments button,.admin-link{min-height:30px;padding:3px 7px;font-size:13px;border-color:transparent}
 .segments button[aria-pressed=true]{background:var(--teal);color:#fff}
 .admin-link{border:1px solid var(--line);border-radius:7px;text-decoration:none;display:inline-flex;align-items:center}
@@ -88,10 +86,18 @@ textarea{font:inherit;border:1px solid var(--line);border-radius:7px;padding:8px
   .layout{display:block}
   .layout>aside{height:auto;padding:8px 12px}
   .brand{margin:0 0 5px}
-  aside nav{display:flex;flex-wrap:wrap;gap:2px}
-  aside nav a{padding:5px 7px;font-size:13px}
-  .cards{grid-template-columns:repeat(2,minmax(0,1fr));top:calc(var(--sidebar-height,0px) + var(--banner-height,0px))}
-  .top{top:var(--sidebar-height,0px);justify-content:space-between}
+  aside nav{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:2px}
+  aside nav a{flex:none;white-space:nowrap;padding:5px 4px;font-size:clamp(10px,2.8vw,14px)}
+  .cards{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .top{position:static;grid-template-columns:minmax(0,1fr) max-content;grid-template-areas:"po actions" "discount currency";gap:7px 4px;padding:8px}
+  .top>#page-name,.banner-currency .rate-prefix{display:none}
+  .top>.banner-currency{justify-self:end}
+  .top .segments{gap:2px;padding:2px}
+  .top .segments button,.top .admin-link{font-size:clamp(10px,2.9vw,13px);padding:3px clamp(3px,1vw,7px)}
+  .top .segments span,.top .discount-control label{font-size:clamp(10px,2.8vw,12px);padding-inline:2px}
+  .top-end{gap:4px}
+  .top .discount-stepper button{width:26px;font-size:14px}
+  .top #discount{width:42px;font-size:12px}
   .hero{display:none}
 }
 
@@ -132,7 +138,7 @@ textarea{font:inherit;border:1px solid var(--line);border-radius:7px;padding:8px
 .paired-chart.chart-scroll{margin-top:9px}
 #chart-range-gap .paired-chart{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px;margin-top:9px}
 #chart-range-gap .bar-group{grid-template-columns:54px minmax(0,1fr);padding-inline-end:clamp(0px,calc(100% - 438px),88px)}
-@media(max-width:800px),(max-height:580px){.cards{max-height:26vh;overflow:auto}}
+@media(min-width:801px) and (max-height:580px){.cards{max-height:26vh;overflow:auto}}
 @media(max-width:1200px){.overview-four,.overview-three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:570px){.overview-four,.overview-three{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:800px){.overview-range-row{grid-template-columns:minmax(0,1fr)}}
